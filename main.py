@@ -20,7 +20,7 @@ from classes.message import Message
 from utils import tools
 from utils.config import Config
 
-VERSION = "3.4.0"
+VERSION = "3.4.0-anon"
 
 
 class Instance:
@@ -115,7 +115,9 @@ class Scheduler:
                         )
                         await conn.execute("DELETE FROM snippet WHERE guild=$1", guild)
 
-                    await conn.execute("DELETE FROM premium WHERE identifier=$1", row[0])
+                    await conn.execute(
+                        "DELETE FROM premium WHERE identifier=$1", row[0]
+                    )
 
             await asyncio.sleep(60)
 
@@ -127,25 +129,37 @@ class Scheduler:
             await self.session.post(
                 f"https://top.gg/api/bots/{self.bot.id}/stats",
                 data=orjson.dumps({"server_count": guilds, "shard_count": shards}),
-                headers={"Authorization": config.TOPGG_TOKEN, "Content-Type": "application/json"},
+                headers={
+                    "Authorization": config.TOPGG_TOKEN,
+                    "Content-Type": "application/json",
+                },
             )
 
             await self.session.post(
                 f"https://discord.bots.gg/api/v1/bots/{self.bot.id}/stats",
                 data=orjson.dumps({"guildCount": guilds, "shardCount": shards}),
-                headers={"Authorization": config.DBOTS_TOKEN, "Content-Type": "application/json"},
+                headers={
+                    "Authorization": config.DBOTS_TOKEN,
+                    "Content-Type": "application/json",
+                },
             )
 
             await self.session.post(
                 f"https://discordbotlist.com/api/v1/bots/{self.bot.id}/stats",
                 data=orjson.dumps({"guilds": guilds}),
-                headers={"Authorization": config.DBL_TOKEN, "Content-Type": "application/json"},
+                headers={
+                    "Authorization": config.DBL_TOKEN,
+                    "Content-Type": "application/json",
+                },
             )
 
             await self.session.post(
                 f"https://bots.ondiscord.xyz/bot-api/bots/{self.bot.id}/guilds",
                 data=orjson.dumps({"guildCount": guilds}),
-                headers={"Authorization": config.BOD_TOKEN, "Content-Type": "application/json"},
+                headers={
+                    "Authorization": config.BOD_TOKEN,
+                    "Content-Type": "application/json",
+                },
             )
 
             await asyncio.sleep(900)
@@ -163,7 +177,9 @@ class Scheduler:
                     continue
 
                 channel = tools.create_fake_channel(self.bot, menu_key.split(":")[1])
-                message = tools.create_fake_message(self.bot, channel, menu_key.split(":")[2])
+                message = tools.create_fake_message(
+                    self.bot, channel, menu_key.split(":")[2]
+                )
 
                 emojis = []
 
@@ -177,19 +193,38 @@ class Scheduler:
                 elif menu["kind"] == "confirmation":
                     emojis = ["✅", "🔁", "❌"]
                     try:
-                        await message.edit(ErrorEmbed("Time out. You did not choose anything."))
+                        await message.edit(
+                            ErrorEmbed("Time out. You did not choose anything.")
+                        )
                     except discord.HTTPException:
                         emojis = []
                 elif menu["kind"] == "selection":
-                    emojis = ["1⃣", "2⃣", "3⃣", "4⃣", "5⃣", "6⃣", "7⃣", "8⃣", "9⃣", "🔟", "◀️", "▶️"]
+                    emojis = [
+                        "1⃣",
+                        "2⃣",
+                        "3⃣",
+                        "4⃣",
+                        "5⃣",
+                        "6⃣",
+                        "7⃣",
+                        "8⃣",
+                        "9⃣",
+                        "🔟",
+                        "◀️",
+                        "▶️",
+                    ]
                     try:
-                        await message.edit(ErrorEmbed("Time out. You did not choose anything."))
+                        await message.edit(
+                            ErrorEmbed("Time out. You did not choose anything.")
+                        )
                     except discord.HTTPException:
                         emojis = []
                 elif menu["kind"] == "aireply":
                     emojis = ["✅", "❌"]
                     try:
-                        await message.edit(ErrorEmbed("Time out. You did not choose anything."))
+                        await message.edit(
+                            ErrorEmbed("Time out. You did not choose anything.")
+                        )
                     except discord.HTTPException:
                         emojis = []
 
@@ -211,14 +246,22 @@ class Scheduler:
 
         if len(data) >= 1:
             await self.bot.state.set(
-                [y for x in data for y in (f"prefix:{x[0]}", "" if x[1] is None else x[1])]
+                [
+                    y
+                    for x in data
+                    for y in (f"prefix:{x[0]}", "" if x[1] is None else x[1])
+                ]
             )
 
         if len([x[0] for x in bans if x[1] == 0]) >= 1:
-            await self.bot.state.sadd("banned_users", *[x[0] for x in bans if x[1] == 0])
+            await self.bot.state.sadd(
+                "banned_users", *[x[0] for x in bans if x[1] == 0]
+            )
 
         if len([x[0] for x in bans if x[1] == 1]) >= 1:
-            await self.bot.state.sadd("banned_guilds", *[x[0] for x in bans if x[1] == 1])
+            await self.bot.state.sadd(
+                "banned_guilds", *[x[0] for x in bans if x[1] == 1]
+            )
 
         if config.ENVIRONMENT == "production":
             self.loop.create_task(self.bot_stats_updater())
@@ -262,8 +305,12 @@ class Main:
 
         await self.bot.state.delete(f"user_select:{body['id']}")
 
-        channel = tools.create_fake_channel(self.bot, user_select["message"]["channel_id"])
-        message = Message(state=self.bot.state, channel=channel, data=user_select["message"])
+        channel = tools.create_fake_channel(
+            self.bot, user_select["message"]["channel_id"]
+        )
+        message = Message(
+            state=self.bot.state, channel=channel, data=user_select["message"]
+        )
         msg = Message(state=self.bot.state, channel=channel, data=user_select["msg"])
 
         await tools.select_guild(self.bot, message, msg)
@@ -285,7 +332,9 @@ class Main:
 
         data.append({"labels": {"cluster": "0"}, "targets": ["localhost:6100"]})
         for i in range(1, len(self.instances) + 1):
-            data.append({"labels": {"cluster": str(i)}, "targets": [f"localhost:{6100 + i}"]})
+            data.append(
+                {"labels": {"cluster": str(i)}, "targets": [f"localhost:{6100 + i}"]}
+            )
 
         with open("targets.json", "w") as file:
             json.dump(data, file, indent=2)

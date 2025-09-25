@@ -10,6 +10,7 @@ from classes.channel import DMChannel
 from classes.embed import Embed, ErrorEmbed
 from classes.http import HTTPClient
 from classes.message import Message
+from utils.encryption import decrypt_id
 
 log = logging.getLogger(__name__)
 
@@ -72,7 +73,9 @@ async def create_paginator(bot, ctx, pages):
             },
         },
     )
-    await bot.state.sadd("reaction_menu_keys", f"reaction_menu:{msg.channel.id}:{msg.id}")
+    await bot.state.sadd(
+        "reaction_menu_keys", f"reaction_menu:{msg.channel.id}:{msg.id}"
+    )
 
 
 async def select_guild(bot, message, msg):
@@ -104,7 +107,7 @@ async def select_guild(bot, message, msg):
 
         channel = None
         for text_channel in await guild.text_channels():
-            if is_modmail_channel(text_channel, message.author.id):
+            if is_modmail_channel(bot, text_channel, message.author.id):
                 channel = text_channel
 
         if not channel:
@@ -113,7 +116,9 @@ async def select_guild(bot, message, msg):
             guilds[str(guild.id)] = (guild.name, True)
 
     if len(guilds) == 0:
-        await message.channel.send(ErrorEmbed("Oops, something strange happened. No server found."))
+        await message.channel.send(
+            ErrorEmbed("Oops, something strange happened. No server found.")
+        )
         return
 
     embeds = []
@@ -160,11 +165,15 @@ async def select_guild(bot, message, msg):
             },
         },
     )
-    await bot.state.sadd("reaction_menu_keys", f"reaction_menu:{msg.channel.id}:{msg.id}")
+    await bot.state.sadd(
+        "reaction_menu_keys", f"reaction_menu:{msg.channel.id}:{msg.id}"
+    )
 
 
 async def get_reaction_menu(bot, payload, kind):
-    menu = await bot.state.get(f"reaction_menu:{payload.channel_id}:{payload.message_id}")
+    menu = await bot.state.get(
+        f"reaction_menu:{payload.channel_id}:{payload.message_id}"
+    )
     if menu and menu["kind"] == kind:
         channel = create_fake_channel(bot, payload.channel_id)
         message = create_fake_message(bot, channel, payload.message_id)
@@ -223,7 +232,9 @@ async def get_guild_prefix(bot, guild):
 
 async def get_user_settings(bot, user):
     async with bot.pool.acquire() as conn:
-        return await conn.fetchrow("SELECT confirmation FROM account WHERE identifier=$1", user)
+        return await conn.fetchrow(
+            "SELECT confirmation FROM account WHERE identifier=$1", user
+        )
 
 
 async def get_user_guilds(bot, member):
@@ -234,7 +245,9 @@ async def get_user_guilds(bot, member):
     token = await bot.state.get(f"user_token:{member.id}", False)
     if token is None:
         async with bot.pool.acquire() as conn:
-            res = await conn.fetchrow("SELECT token FROM account WHERE identifier=$1", member.id)
+            res = await conn.fetchrow(
+                "SELECT token FROM account WHERE identifier=$1", member.id
+            )
 
         if not res or not res[0]:
             return None
@@ -286,7 +299,9 @@ async def get_user_guilds(bot, member):
 
 
 async def get_premium_slots(bot, user):
-    if str(user) in bot.config.OWNER_USERS.split(",") + bot.config.ADMIN_USERS.split(","):
+    if str(user) in bot.config.OWNER_USERS.split(",") + bot.config.ADMIN_USERS.split(
+        ","
+    ):
         return 1000
 
     guild = await bot.get_guild(int(bot.config.MAIN_SERVER))
@@ -330,12 +345,19 @@ async def is_guild_banned(bot, guild):
     return await bot.state.sismember("banned_guilds", guild.id)
 
 
-def is_modmail_channel(channel, user_id=None):
-    if not getattr(channel, "topic", None) or not channel.topic.startswith("ModMail Channel "):
+def is_modmail_channel(bot, channel, user_id=None):
+    if not getattr(channel, "topic", None) or not channel.topic.startswith(
+        "ModMail Channel "
+    ):
         return False
 
     parts = channel.topic.replace("ModMail Channel ", "").split(" ")
-    if len(parts) < 2 or not parts[0].isdigit() or not parts[1].isdigit():
+    if len(parts) < 2 or not parts[1].isdigit():
+        return False
+
+    parts[0] = decrypt_id(parts[0], bot.config.ENCRYPTION_KEY)
+
+    if not parts[0].isdigit():
         return False
 
     if user_id and parts[0] != str(user_id):
@@ -344,12 +366,16 @@ def is_modmail_channel(channel, user_id=None):
     return True
 
 
-def get_modmail_user(channel):
-    return create_fake_user(channel.topic.replace("ModMail Channel ", "").split(" ")[0])
+def get_modmail_user(bot, channel):
+    return create_fake_user(
+        decrypt_id(channel.topic.replace("ModMail Channel ", "").split(" ")[0], bot.config.ENCRYPTION_KEY)
+    )
 
 
 def get_modmail_channel(bot, channel):
-    return create_fake_channel(bot, channel.topic.replace("ModMail Channel ", "").split(" ")[1])
+    return create_fake_channel(
+        bot, channel.topic.replace("ModMail Channel ", "").split(" ")[1]
+    )
 
 
 def perm_format(perm):

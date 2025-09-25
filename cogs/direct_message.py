@@ -2,6 +2,7 @@ import io
 import logging
 import string
 import time
+from random_slugs import generate_slug
 
 import discord
 
@@ -11,6 +12,7 @@ from classes.embed import Embed, ErrorEmbed
 from classes.message import Message
 from utils import tools
 from utils.converters import GuildConverter
+from utils.encryption import encrypt_id
 
 log = logging.getLogger(__name__)
 
@@ -48,13 +50,15 @@ class DirectMessageEvents(commands.Cog, name="Direct Message"):
 
         if message.author.id in data[9]:
             await message.channel.send(
-                ErrorEmbed("That server has blacklisted you from sending a message there.")
+                ErrorEmbed(
+                    "That server has blacklisted you from sending a message there."
+                )
             )
             return
 
         channel = None
         for text_channel in await guild.text_channels():
-            if tools.is_modmail_channel(text_channel, message.author.id):
+            if tools.is_modmail_channel(self.bot, text_channel, message.author.id):
                 channel = text_channel
                 break
 
@@ -62,7 +66,7 @@ class DirectMessageEvents(commands.Cog, name="Direct Message"):
             if data[12] is not None:
                 embed = ErrorEmbed(
                     "Ticket Creation Disabled",
-                    data[12] if data[12] else "No reason was provided.",
+                    data[12] if data[12] else "Geen reden opgegeven.",
                     timestamp=True,
                 )
                 embed.set_footer(f"{guild.name} | {guild.id}", guild.icon_url)
@@ -71,33 +75,20 @@ class DirectMessageEvents(commands.Cog, name="Direct Message"):
 
             self.bot.prom.tickets.inc({})
 
-            name = "".join(
-                [
-                    x
-                    for x in message.author.name.lower()
-                    if x not in string.punctuation and x.isprintable()
-                ]
+            encrypted_id = encrypt_id(
+                str(message.author.id), self.bot.config.ENCRYPTION_KEY
             )
-
-            if not name:
-                name = message.author.id
+            name_slug = f"ticket-{generate_slug()}"
 
             try:
                 channel = await guild.create_text_channel(
-                    name=name,
+                    name=name_slug,
                     category=category,
-                    topic=f"ModMail Channel {message.author.id} {message.channel.id} (Please do "
+                    topic=f"ModMail Channel {encrypted_id} {message.channel.id} (Please do "
                     "not change this)",
                 )
             except discord.HTTPException as e:
-                if "Contains words not allowed" in e.text:
-                    channel = await guild.create_text_channel(
-                        name=message.author.id,
-                        category=category,
-                        topic=f"ModMail Channel {message.author.id} {message.channel.id} (Please "
-                        "do not change this)",
-                    )
-                elif "Maximum number of channels" in e.text:
+                if "Maximum number of channels" in e.text:
                     await message.channel.send(
                         ErrorEmbed(
                             "The server has reached the maximum number of active tickets. Please "
@@ -117,14 +108,16 @@ class DirectMessageEvents(commands.Cog, name="Direct Message"):
             log_channel = await guild.get_channel(data[4])
             if log_channel:
                 embed = Embed(
-                    title="New Ticket",
+                    title="Nieuw Ticket",
                     colour=0x00FF00,
                     timestamp=True,
+                    description=f"{channel.mention} ({channel.name})",
                 )
-                embed.set_footer(
-                    f"{message.author.name} | {message.author.id}",
-                    message.author.avatar_url,
-                )
+
+                # embed.set_footer(
+                #     f"{message.author.name} | {message.author.id}",
+                #     message.author.avatar_url,
+                # )
 
                 try:
                     await log_channel.send(embed)
@@ -134,7 +127,7 @@ class DirectMessageEvents(commands.Cog, name="Direct Message"):
             prefix = await tools.get_guild_prefix(self.bot, guild)
 
             embed = Embed(
-                "New Ticket",
+                "Nieuw Ticket",
                 "Type a message in this channel to reply. Messages starting with the server prefix "
                 f"`{prefix}` are ignored, and can be used for staff discussion. Use the command "
                 f"`{prefix}close [reason]` to close this ticket.",
@@ -148,22 +141,24 @@ class DirectMessageEvents(commands.Cog, name="Direct Message"):
                     f"`{prefix}close [reason]` to close this ticket. (Command only mode enabled)"
                 )
 
-            embed.add_field("User", f"<@{message.author.id}> ({message.author.id})")
-            embed.add_field(
-                "Roles",
-                (
-                    "*None*"
-                    if len(member._roles) == 0
-                    else (
-                        " ".join([f"<@&{x}>" for x in member._roles])
-                        if len(" ".join([f"<@&{x}>" for x in member._roles])) <= 1024
-                        else f"*{len(member._roles)} roles*"
-                    )
-                ),
-            )
-            embed.set_footer(
-                f"{message.author.name} | {message.author.id}", message.author.avatar_url
-            )
+            # embed.add_field("User", f"<@{message.author.id}> ({message.author.id})")
+            # embed.add_field(
+            #     "Roles",
+            #     (
+            #         "*None*"
+            #         if len(member._roles) == 0
+            #         else (
+            #             " ".join([f"<@&{x}>" for x in member._roles])
+            #             if len(" ".join([f"<@&{x}>" for x in member._roles])) <= 1024
+            #             else f"*{len(member._roles)} roles*"
+            #         )
+            #     ),
+            # )
+            # embed.set_footer(
+            #     f"{message.author.name} | {message.author.id}",
+            #     message.author.avatar_url,
+            # )
+            embed.set_footer()
 
             roles = []
             for role in data[8]:
@@ -186,7 +181,7 @@ class DirectMessageEvents(commands.Cog, name="Direct Message"):
 
             if data[5]:
                 embed = Embed(
-                    "Greeting Message",
+                    "Groetbericht",
                     tools.tag_format(data[5], message.author),
                     colour=0xFF4500,
                     timestamp=True,
@@ -195,7 +190,9 @@ class DirectMessageEvents(commands.Cog, name="Direct Message"):
 
                 await message.channel.send(embed)
 
-        embed = Embed("Message Sent", message.content, colour=0x00FF00, timestamp=True)
+        embed = Embed(
+            "Bericht Verzonden", message.content, colour=0x00FF00, timestamp=True
+        )
         embed.set_footer(f"{guild.name} | {guild.id}", guild.icon_url)
 
         files = []
@@ -206,11 +203,12 @@ class DirectMessageEvents(commands.Cog, name="Direct Message"):
 
         dm_message = await message.channel.send(embed, files=files)
 
-        embed.title = "Message Received"
-        embed.set_footer(
-            f"{message.author.name} | {message.author.id}",
-            message.author.avatar_url,
-        )
+        embed.title = "Bericht Ontvangen"
+        embed.set_footer()
+        # embed.set_footer(
+        #     f"{message.author.name} | {message.author.id}",
+        #     message.author.avatar_url,
+        # )
 
         for count, attachment in enumerate(
             [attachment.url for attachment in dm_message.attachments], start=1
@@ -225,7 +223,9 @@ class DirectMessageEvents(commands.Cog, name="Direct Message"):
         except discord.Forbidden:
             await dm_message.delete()
             await message.channel.send(
-                ErrorEmbed("The bot is missing permissions. Please contact an admin on the server.")
+                ErrorEmbed(
+                    "The bot is missing permissions. Please contact an admin on the server."
+                )
             )
 
     @commands.Cog.listener()
@@ -237,12 +237,16 @@ class DirectMessageEvents(commands.Cog, name="Direct Message"):
             return
 
         if payload.emoji.name in ["✅", "🔁", "❌"]:
-            menu, channel, msg = await tools.get_reaction_menu(self.bot, payload, "confirmation")
+            menu, channel, msg = await tools.get_reaction_menu(
+                self.bot, payload, "confirmation"
+            )
             if menu is None:
                 return
 
             guild = await self.bot.get_guild(menu["data"]["guild"])
-            message = Message(state=self.bot.state, channel=channel, data=menu["data"]["msg"])
+            message = Message(
+                state=self.bot.state, channel=channel, data=menu["data"]["msg"]
+            )
 
             if payload.emoji.name == "✅":
                 await self.send_mail(message, guild)
@@ -250,7 +254,9 @@ class DirectMessageEvents(commands.Cog, name="Direct Message"):
             else:
                 if payload.emoji.name == "🔁":
                     await msg.edit(Embed("Loading servers..."))
-                    self.bot.loop.create_task(tools.select_guild(self.bot, message, msg))
+                    self.bot.loop.create_task(
+                        tools.select_guild(self.bot, message, msg)
+                    )
                 elif payload.emoji.name == "❌":
                     await msg.edit(ErrorEmbed("Request cancelled successfully."))
 
@@ -267,7 +273,9 @@ class DirectMessageEvents(commands.Cog, name="Direct Message"):
         numbers = ["1⃣", "2⃣", "3⃣", "4⃣", "5⃣", "6⃣", "7⃣", "8⃣", "9⃣", "🔟"]
         arrows = ["◀️", "▶️"]
         if payload.emoji.name in numbers + arrows:
-            menu, channel, msg = await tools.get_reaction_menu(self.bot, payload, "selection")
+            menu, channel, msg = await tools.get_reaction_menu(
+                self.bot, payload, "selection"
+            )
             if menu is None:
                 return
 
@@ -283,7 +291,9 @@ class DirectMessageEvents(commands.Cog, name="Direct Message"):
                     return
 
                 guild = await self.bot.get_guild(fields[chosen]["value"].split()[-1])
-                message = Message(state=self.bot.state, channel=channel, data=menu["data"]["msg"])
+                message = Message(
+                    state=self.bot.state, channel=channel, data=menu["data"]["msg"]
+                )
                 await self.send_mail(message, guild)
 
                 await self.bot.state.delete(f"reaction_menu:{channel.id}:{msg.id}")
@@ -331,7 +341,11 @@ class DirectMessageEvents(commands.Cog, name="Direct Message"):
         ):
             return
 
-        for prefix in [f"<@{self.bot.id}> ", f"<@!{self.bot.id}> ", self.bot.config.DEFAULT_PREFIX]:
+        for prefix in [
+            f"<@{self.bot.id}> ",
+            f"<@!{self.bot.id}> ",
+            self.bot.config.DEFAULT_PREFIX,
+        ]:
             if message.content.startswith(prefix):
                 return
 
@@ -348,7 +362,8 @@ class DirectMessageEvents(commands.Cog, name="Direct Message"):
                 if (
                     msg.author.id == self.bot.id
                     and len(msg.embeds) > 0
-                    and msg.embeds[0].title in ["Message Received", "Message Sent"]
+                    and msg.embeds[0].title
+                    in ["Bericht Ontvangen", "Bericht Verzonden"]
                 ):
                     guild = msg.embeds[0].footer.text.split()[-1]
                     guild = await self.bot.get_guild(int(guild))
@@ -412,7 +427,8 @@ class DirectMessageEvents(commands.Cog, name="Direct Message"):
 
     @commands.dm_only()
     @commands.command(
-        description="Shortcut to send message to a server.", usage="send <server ID> <message>"
+        description="Shortcut to send message to a server.",
+        usage="send <server ID> <message>",
     )
     async def send(self, ctx, guild: GuildConverter, *, message: str):
         ctx.message.content = message

@@ -13,33 +13,33 @@ class Premium(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(
-        description="Get some information about ModMail premium.",
-        usage="premium",
-        aliases=["donate", "patron"],
-    )
-    async def premium(self, ctx):
-        embed = Embed(
-            "Premium",
-            "Purchasing premium is the best way you can show support to us. As hosting this bot "
-            "for all the servers and users costs much money, your donation will certainly help us "
-            "a lot in keeping the bot running. You will also get access to the premium features "
-            "listed below.",
-        )
-        embed.add_field(
-            "Premium Features",
-            "- Custom greeting and closing messages.\n- Advanced logging that includes chat "
-            "history.\n- Snippet functionality (saved messages).\n- Priority support.\n- Exclusive "
-            "role and channels in the support server.\n- More features released in future.",
-            False,
-        )
-        embed.add_field(
-            "Get Premium",
-            f"Please join our support server and go to {self.bot.config.BASE_URI}/premium.",
-            False,
-        )
+    # @commands.command(
+    #     description="Get some information about ModMail premium.",
+    #     usage="premium",
+    #     aliases=["donate", "patron"],
+    # )
+    # async def premium(self, ctx):
+    #     embed = Embed(
+    #         "Premium",
+    #         "Purchasing premium is the best way you can show support to us. As hosting this bot "
+    #         "for all the servers and users costs much money, your donation will certainly help us "
+    #         "a lot in keeping the bot running. You will also get access to the premium features "
+    #         "listed below.",
+    #     )
+    #     embed.add_field(
+    #         "Premium Features",
+    #         "- Custom greeting and closing messages.\n- Advanced logging that includes chat "
+    #         "history.\n- Snippet functionality (saved messages).\n- Priority support.\n- Exclusive "
+    #         "role and channels in the support server.\n- More features released in future.",
+    #         False,
+    #     )
+    #     embed.add_field(
+    #         "Get Premium",
+    #         f"Please join our support server and go to {self.bot.config.BASE_URI}/premium.",
+    #         False,
+    #     )
 
-        await ctx.send(embed)
+    #     await ctx.send(embed)
 
     @checks.is_premium()
     @commands.guild_only()

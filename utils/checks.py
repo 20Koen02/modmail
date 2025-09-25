@@ -101,7 +101,7 @@ def is_patron():
 
 def is_modmail_channel():
     async def predicate(ctx):
-        if not tools.is_modmail_channel(ctx.channel):
+        if not tools.is_modmail_channel(ctx.bot, ctx.channel):
             await ctx.send(ErrorEmbed("This channel is not a ModMail channel."))
             return False
 

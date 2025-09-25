@@ -17,7 +17,7 @@ class ModMailEvents(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        if message.author.bot or not message.guild or not tools.is_modmail_channel(message.channel):
+        if message.author.bot or not message.guild or not tools.is_modmail_channel(self.bot, message.channel):
             return
 
         permissions = await message.channel.permissions_for(await message.guild.me())
@@ -47,7 +47,7 @@ class ModMailEvents(commands.Cog):
         self.bot.prom.tickets_message.inc({})
 
         data = await tools.get_data(self.bot, message.guild.id)
-        user = tools.get_modmail_user(message.channel)
+        user = tools.get_modmail_user(self.bot, message.channel)
 
         if user.id in data[9]:
             await message.channel.send(
@@ -71,7 +71,7 @@ class ModMailEvents(commands.Cog):
         if snippet is True:
             message.content = tools.tag_format(message.content, member)
 
-        embed = Embed("Message Received", message.content, colour=0xFF4500, timestamp=True)
+        embed = Embed("Bericht Ontvangen", message.content, colour=0xFF4500, timestamp=True)
         embed.set_footer(f"{message.guild.name} | {message.guild.id}", message.guild.icon_url)
 
         if anon is False:
@@ -95,9 +95,9 @@ class ModMailEvents(commands.Cog):
             )
             return
 
-        embed.title = "Message Sent"
+        embed.title = "Bericht Verzonden"
         embed.set_author(
-            str(message.author.name) if anon is False else f"{message.author.name} (Anonymous)",
+            str(message.author.name) if anon is False else f"{message.author.name} (Anoniem)",
             message.author.avatar_url,
         )
         embed.set_footer(f"{member.name} | {member.id}", member.avatar_url)

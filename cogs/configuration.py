@@ -395,7 +395,7 @@ class Configuration(commands.Cog):
             )
 
         await ctx.send(
-            Embed(f"Anonymous messaging is {'enabled' if data[10] is False else 'disabled'}.")
+            Embed(f"Anonymous staff messaging is {'enabled' if data[10] is False else 'disabled'}.")
         )
 
     @checks.in_database()
@@ -470,7 +470,7 @@ class Configuration(commands.Cog):
         if toggle and len(toggle) > 989:
             toggle = toggle[:986] + "..."
         elif toggle == "":
-            toggle = "No reason was provided."
+            toggle = "Geen reden opgegeven."
 
         greeting = data[5]
         if greeting and len(greeting) > 1000:
@@ -491,7 +491,7 @@ class Configuration(commands.Cog):
         embed.add_field("Ping Roles", "*Not set*" if len(ping) == 0 else " ".join(ping))
         embed.add_field("Logging", "*Not set*" if logging is None else f"<#{logging.id}>")
         embed.add_field("Advanced Logging", loggingplus)
-        embed.add_field("Anonymous Messaging", "Enabled" if data[10] is True else "Disabled")
+        embed.add_field("Anonymous Staff Messaging", "Enabled" if data[10] is True else "Disabled")
         embed.add_field("Command Only", "Enabled" if data[11] is True else "Disabled")
         embed.add_field("Ticket Creation", "Enabled" if toggle is None else f"Disabled ({toggle})")
         embed.add_field("Greeting Message", "*Not set*" if greeting is None else greeting, False)
